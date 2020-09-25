@@ -1,4 +1,9 @@
-﻿#include <stdio.h>
+/*
+    Документация пока не актуальна
+*/
+
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys\stat.h>
 #include <assert.h>
