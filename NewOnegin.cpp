@@ -1,8 +1,3 @@
-/*
-    Документация пока не актуальна
-*/
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys\stat.h>
@@ -14,17 +9,19 @@
 const char* INPUT = "C:/Users/днс/Desktop/input.txt";
 const char* OUTPUT = "C:/Users/днс/Desktop/output.txt";
 
-enum validchars {
-    SORT_BY_RU_CHARS = 1,
-    SORT_BY_EN_CHARS = 1,
-    SORT_BY_DIGITS = 0
-};
+
+int sort_by_ru_chars = 1,
+    sort_by_en_chars = 1,
+      sort_by_digits = 0;
+
+const int START = 0,
+            END = 1;
 
 
 /*!
     Evgeny Onegin, or The enchanting strings sorting
     \author AlexeyPopovMIPT
-    \version 1.0
+    \version 1.0.0.1
 
     Program for sorting the strings from the .txt file, whose full path is located by the INPUT address.
     As a result, application writes sorted strings, then sorted by the end strings, then original text
@@ -39,8 +36,18 @@ enum validchars {
     \arg In both languages any uppercase letter is "less" than any lowercase letter;
     \arg In both languages letters of both case is ordered same as in the alphabet.
 
+    Command prompt arguments:
+    <ul>
+    <li> nl - do not display program info </li>
+    <li> t - display executing time </li>
+    <li> rm - not to sort by Russian chars </li>
+    <li> em - not to sort by English chars </li>
+    <li> dp - sort by digits </li>
+    </ul>
+
+
 */
-int main();
+int main(int argc, char* args[]);
 
 /*!
     A direct comparator for two lines
@@ -59,8 +66,8 @@ int RevCompareTo(const void* val1, const void* val2);
 /*!
     This is comparator that compares \c str1 and \c str2 by their "valid chars", that means Russian and
         English characters and digits.
-    \param [IN] str1 - 1st string
-    \param [IN] str2 - 2nd string
+    \param [IN] str1 - 1st line
+    \param [IN] str2 - 2nd line
     \param [IN] dir  - direction of comparing (1 if direct and -1 if reverse)
 
     \returns positive value if \c str1 is bigger than \c str2, 0 if they're equal, and negative value
@@ -99,7 +106,7 @@ int GetCharCode(unsigned char* ch, int dir);
     This function is copying data from \c Source to array \c data, removing '\r's and replacing
     '\n's by '\0's, and counting strings in \c Source.
 
-    \warning you have to be sure that array \c data is big enough
+    \warning you have to be sure that array \c data is big enough to accomodate all bytes from \c Source.
 
     \attention if string is empty, it will not be met in array \c data
     \attention result of counting doesn't depend on presence of \n after the last string.
@@ -113,38 +120,85 @@ int GetDataAndCountStrings(FILE* Source, unsigned char* data, int FileSize);
 
     \warning You have to be sure that array \c pointers is big enough
 */
-void GetNSPointers(unsigned char* data, struct line* pointers);
+void GetNewStringsPointers(unsigned char* data, struct line* pointers);
 
 /*!
     Sorting char** \c array from element \a 0 to \a size-1 with comparator \b int \b dir_strcmp(char*,char*)
 */
 int MergeSort(struct line* array, int size, int dir);
 
+/*!
+    Prints \c size lines from \c array to \c out, then 50 "stars", each one on a new line
+*/
 void fPrintLines(FILE* out, struct line* array, int size);
 
+/*!
+    Prints every char from \c array to \c out
+    \attention \c array must have \c EOF (255) at the end
+*/
 void fPrintStrings(FILE* out, unsigned char* array);
 
-FILE* OpenFile(const char* filename, const char* mode);
+/*!
+    Opens file by \c filename path in \mode mode, in case of failure prints error message
+    \returns
+*/
+int OpenFile(const char* filename, const char* mode, FILE** stream);
 
 int GetFileSize(const char* filename);
 
-unsigned char* InitData ( const char filename[] );
+unsigned char* InitData (const char filename[]);
 
+/*!
+    Determines a unsigned char* that is located somewhere in memory
+    \param start - pointer to the 1st byte of char*
+    \param end - pointer to the last byte of char*
+*/
 struct line {
 
-    unsigned char* start;
-    unsigned char* end;
+    unsigned char* start; 
+    unsigned char* end; 
 
 };
 
-int main()
+int main(int argc, char *args[])
 {
+    extern double Stopwatch(int par);
+    int measure_time = 0;
 
-    clock_t start = clock();
+    //Processing arguments
+    {
+        int prev_param = 0, param = 0, nologo = 0;
+        while (--argc > 0 && (*++args)[0] == '-') {
+            while (param = *++args[0]) {
+                switch (param) {
+                case 'p':
+                    if (prev_param == 'd') sort_by_digits = 1;
+                    break;
+                case 'm':
+                    if (prev_param == 'r') sort_by_ru_chars = 0;
+                    else if (prev_param == 'e') sort_by_en_chars = 0;
+                    break;
+                case 'l':
+                    if (prev_param == 'n') nologo = 1;
+                    break;
+                case 't':
+                    measure_time = 1;
+                }
+                prev_param = param;
+            }
+        }
+        if (!nologo)
+            printf("Sorting strings from file\nAuthor: AlexeyPopovMIPT, 2020\nVersion 1.0.0.1\n\n");
+    }
 
-    FILE *Source = OpenFile(INPUT, "rb"),
-            *out = OpenFile(OUTPUT, "w");
-    if (Source == NULL || out == NULL) {
+    if (measure_time) {
+        Stopwatch(START);
+    }
+
+    FILE *Source = NULL,
+            *out = NULL;
+    if (OpenFile(INPUT, "rb", &Source) != 0
+     || OpenFile(OUTPUT, "w", &out)    != 0) {
         return 0;
     }
     //--------------------------------------------------------------------------------------------------------------------------------
@@ -156,7 +210,7 @@ int main()
     int StringsCount = GetDataAndCountStrings(Source, data, FileSize);
 
     line* pointers = (line*)calloc(StringsCount + 2, sizeof(pointers[0]));
-    GetNSPointers(data, pointers);
+    GetNewStringsPointers(data, pointers);
 
     //--------------------------------------------------------------------------------------------------------------------------------
         //Sorting and printing
@@ -180,19 +234,19 @@ int main()
     free(data);
 
 
-    clock_t stop = clock();
-    printf("%f", ((double)stop - (double)start) / CLK_TCK);
+    if (measure_time) printf("%f", Stopwatch(END));
     return 0;
 }
 
+int OpenFile(const char* filename, const char* mode, FILE** stream) {
 
-FILE* OpenFile(const char* filename, const char* mode) {
-    FILE* stream;
-    if (fopen_s(&stream, filename, mode) != 0) {
+    int errcode;
+    if ((errcode = fopen_s(stream, filename, mode)) != 0) {
         printf("Unexpected error while opening %s\n", filename);
-        return NULL;
+        return errcode;
     }
-    return stream;
+    return 0;
+
 }
 
 int GetFileSize(const char* filename) {
@@ -206,10 +260,14 @@ int GetFileSize(const char* filename) {
 }
 
 unsigned char* InitData(const char filename[] ) {
+
     int FileSize = GetFileSize(filename);
+
     unsigned char* data = (unsigned char*)calloc(FileSize + 2, sizeof(data[0]));
     for (int i = 0; i < FileSize + 2; i++) { *(data + i) = 0; }
+
     return data;
+
 }
 
 void fPrintLines(FILE* out, struct line* array, int size) {
@@ -238,7 +296,7 @@ void fPrintStrings(FILE* out, unsigned char* array) {
 
 }
 
-void GetNSPointers(unsigned char* data, struct line* pointers) {
+void GetNewStringsPointers(unsigned char* data, struct line* pointers) {
 
     assert(data != NULL);
 
@@ -310,21 +368,21 @@ int GetCharCode(unsigned char* ch, int dir) {
 
     if (dir == -1) {  //На вход получен младший байт символа, нужно перейти к старшему
         int bytes = 1;
-        while (((*ch) & 192) == 128) { // *ch имеет вид 0b10xxxxxx
+        while (((*ch) & 0b11000000) == 0b10000000) { // *ch имеет вид 0b10xxxxxx
             ch--;
             bytes++;
         }
     }
-    if (((*ch) & 128) == 0) { //Символ занимает 1 байт
-        if (SORT_BY_EN_CHARS && ((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z')) || SORT_BY_DIGITS && (*ch >= '0' && *ch <= '9')) {
+    if (((*ch) & 0b10000000) == 0) { //Символ занимает 1 байт
+        if (sort_by_en_chars && ((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z')) || sort_by_digits && (*ch >= '0' && *ch <= '9')) {
             return *ch;
         }
         else {
             return -1;
         }
     }
-    if (((*ch) & 224) == 192) { //Символ занимает 2 байт
-        if (!SORT_BY_RU_CHARS) return -2;
+    if (((*ch) & 0b11100000) == 0b11000000) { //Символ занимает 2 байт
+        if (!sort_by_ru_chars) return -2;
         int fullcode = (((int)*ch) << 8) + (int)*(ch + 1);
 
         if (fullcode >= 0xD090 && fullcode <= 0xD095) { //А...Е
@@ -344,7 +402,7 @@ int GetCharCode(unsigned char* ch, int dir) {
         }
         return -2;
     }
-    if (((*ch) & 240) == 224) { //Символ занимает 3 байт
+    if (((*ch) & 0b11110000) == 0b11100000) { //Символ занимает 3 байт
         return -3;
     }
     return -4; // Символ занимает 4 байт
