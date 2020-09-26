@@ -27,8 +27,7 @@ const int START = 0,
 
     Program for sorting the strings from the .txt file, whose full path is located by the INPUT address.
     As a result, application writes sorted strings, then sorted by the end strings, then original text
-    to the file, whose full path is located by the OUTPUT address. These parts are separated by 10 lines
-    of 87 "stars".
+    to the file, whose full path is located by the OUTPUT address. These parts are separated by 50 stars each one on a new line.
 
     \warning coding of the input must be UTF-8
 
