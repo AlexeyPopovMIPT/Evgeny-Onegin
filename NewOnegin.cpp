@@ -5,20 +5,33 @@
 #include <sys\stat.h>
 #include <assert.h>
 #include <time.h>
-#include <string.h>
 
 
-const char* INPUT = "C:/Users/днс/Desktop/input.txt";
-const char* OUTPUT = "C:/Users/днс/Desktop/output.txt";
+char* INPUT  = (char*)"input.txt";
+char* OUTPUT = (char*)"output.txt";
+//TODO: in command prompt (сделано)
 
 
-int sort_by_ru_chars = 1,
-    sort_by_en_chars = 1,
-      sort_by_digits = 0;
+int sort_by_ru_chars = 1;
+int sort_by_en_chars = 1;
+int   sort_by_digits = 0;
 
-const int START = 0,
-            END = 1;
+enum Stopwatch_args {
+    START = 0,
+    END = 1
+};
 
+/*!
+    Determines a unsigned char* that is located somewhere in memory
+    \param start - pointer to the 1st byte of char*
+    \param end - pointer to the last byte of char*
+*/
+struct line {
+
+    unsigned char* start;
+    unsigned char* end;
+
+};
 
 /*!
     Evgeny Onegin, or The enchanting strings sorting
@@ -27,7 +40,7 @@ const int START = 0,
 
     Program for sorting the strings from the .txt file, whose full path is located by the INPUT address.
     As a result, application writes sorted strings, then sorted by the end strings, then original text
-    to the file, whose full path is located by the OUTPUT address. These parts are separated by 50 stars each one on a new line.
+    to the file, whose full path is located by the OUTPUT address. These parts are separated by 50 "stars" each one on a new line.
 
     \warning coding of the input must be UTF-8
 
@@ -40,7 +53,7 @@ const int START = 0,
     Command prompt arguments:
     <ul>
     <li> nl - do not display program info </li>
-    <li> t - display executing time </li>
+    <li> t  - display executing time </li>
     <li> rm - not to sort by Russian chars </li>
     <li> em - not to sort by English chars </li>
     <li> dp - sort by digits </li>
@@ -48,7 +61,7 @@ const int START = 0,
 
 
 */
-int main(int argc, char* args[]);
+int main(int argcount, char* argsarray[]);
 
 /*!
     A direct comparator for two lines
@@ -147,43 +160,49 @@ int OpenFile(const char* filename, const char* mode, FILE** stream);
 
 int GetFileSize(const char* filename);
 
-unsigned char* InitData (const char filename[]);
-
-/*!
-    Determines a unsigned char* that is located somewhere in memory
-    \param start - pointer to the 1st byte of char*
-    \param end - pointer to the last byte of char*
-*/
-struct line {
-
-    unsigned char* start; 
-    unsigned char* end; 
-
-};
-
-int main(int argc, char *args[])
+int main(int argcount, char *argsarray[])
 {
     extern double Stopwatch(int par);
     int measure_time = 0;
 
     //Processing arguments
     {
-        int prev_param = 0, param = 0, nologo = 0;
+        int prev_param = 0;
+        int      param = 0;
+        int     nologo = 0;
+
+        //TODO: NOT CHANGE VALUES OF argc AND args
+        int argc = argcount;
+        char** args = argsarray;
+        if (argc < 3) {
+            printf("Pass second input file path, then output file path");
+            return 0;
+        }
+        INPUT = args[1];
+        OUTPUT = args[2];
+        argc -= 2; args += 2;
+
         while (--argc > 0 && (*++args)[0] == '-') {
             while (param = *++args[0]) {
                 switch (param) {
                 case 'p':
                     if (prev_param == 'd') sort_by_digits = 1;
                     break;
+
                 case 'm':
                     if (prev_param == 'r') sort_by_ru_chars = 0;
                     else if (prev_param == 'e') sort_by_en_chars = 0;
                     break;
+
                 case 'l':
                     if (prev_param == 'n') nologo = 1;
                     break;
+
                 case 't':
                     measure_time = 1;
+
+                //TODO: default:
+
                 }
                 prev_param = param;
             }
@@ -196,21 +215,18 @@ int main(int argc, char *args[])
         Stopwatch(START);
     }
 
-    FILE *Source = NULL,
-            *out = NULL;
+    FILE* Source = NULL;
+    FILE*    out = NULL;
     if (OpenFile(INPUT, "rb", &Source) != 0
      || OpenFile(OUTPUT, "w", &out)    != 0) {
         return 0;
     }
-    //--------------------------------------------------------------------------------------------------------------------------------
-        //Init an array for data
 
     int FileSize = GetFileSize(INPUT);
-    unsigned char* data = InitData(INPUT);
+    unsigned char* data = (unsigned char*) calloc(FileSize + 1, sizeof(data[0]));
 
     int StringsCount = GetDataAndCountStrings(Source, data, FileSize);
-
-    line* pointers = (line*)calloc(StringsCount + 2, sizeof(pointers[0]));
+    line* pointers = (line*) calloc(StringsCount, sizeof(pointers[0]));
     GetNewStringsPointers(data, pointers);
 
     //--------------------------------------------------------------------------------------------------------------------------------
@@ -218,7 +234,7 @@ int main(int argc, char *args[])
 
     //1. Directly sorted
     //MergeSort(pointers, StringsCount, 1);
-    qsort((void*)pointers, (size_t)StringsCount, sizeof(line), DirCompareTo);
+    qsort((void*) pointers, (size_t) StringsCount, sizeof(line), DirCompareTo);
     fPrintLines(out, pointers, StringsCount);
 
     //2. Reverse sorted
@@ -251,6 +267,7 @@ int OpenFile(const char* filename, const char* mode, FILE** stream) {
 }
 
 int GetFileSize(const char* filename) {
+    assert(filename);
 
     struct stat fileProperties = {};
     int errcode = stat(filename, &fileProperties);
@@ -260,24 +277,14 @@ int GetFileSize(const char* filename) {
 
 }
 
-unsigned char* InitData(const char filename[] ) {
-
-    int FileSize = GetFileSize(filename);
-
-    unsigned char* data = (unsigned char*)calloc(FileSize + 2, sizeof(data[0]));
-    for (int i = 0; i < FileSize + 2; i++) { *(data + i) = 0; }
-
-    return data;
-
-}
-
 void fPrintLines(FILE* out, struct line* array, int size) {
     assert (out != NULL);
     assert (array != NULL);
 
     for (int i = 0; i < size; i++) {
-        fprintf(out, "%s\n", array[i]); //исправить на array[i].start, если start не будет первым элементом line
+        fprintf(out, "%s\n", array[i].start);
     }
+
     for (int i = 0; i < 50; i++) {
         fprintf(out, "*\n");
     }
@@ -303,13 +310,19 @@ void GetNewStringsPointers(unsigned char* data, struct line* pointers) {
 
     (*pointers).start = data;
     pointers++;
-    for (int i = 0; *(data + i) != 255; i++) {
+    int i;
+    for (i = 0; *(data + i + 1) != 255; i++) {
         if (*(data + i) == '\0') {
             (*pointers).start = data + i + 1;
             (*(pointers - 1)).end = data + i - 1;
             pointers++;
         }
     }
+    if (*(data + i) == '\0') {
+        (*(pointers - 1)).end = data + i - 1;
+        pointers++;
+    }
+
 
 }
 
@@ -322,38 +335,37 @@ int GetDataAndCountStrings(FILE* Source, unsigned char* data, int FileSize) {
     fread(data, sizeof(unsigned char), FileSize, Source);
 
     int counter = 0;
-
+    //reader, realloc
     unsigned char* writer = data;
-    
     unsigned char current_wrote = '\0';
 
-    for (int i=0; i<FileSize; data++, i++) {
-        if (*data == '\r') continue;
+    for (int i = 0; *(data+i); i++) {
+        if (*(data+i) == '\r') continue;
 
-        if (*data == '\n') {
-            if (current_wrote == '\0') {
-                continue;
-            }
+        if (*(data + i) == '\n') {
+            if (current_wrote == '\0') continue;
+            
             *writer = '\0';
             writer++;
             current_wrote = '\0';
             counter++;
         }
         else {
-            *writer = *data;
+            *writer = *(data + i);
             writer++;
-            current_wrote = *data;
+            current_wrote = *(data + i);
         }
 
     }
-
     if (current_wrote != '\0')
     {
         *writer = '\0';
         writer++;
         counter++;
     }
-    *writer = EOF;
+    *(writer++) = EOF;
+    realloc(data, writer - data);
+    //TODO: reallocate data
 
     return counter;
 
@@ -374,14 +386,18 @@ int GetCharCode(unsigned char* ch, int dir) {
             bytes++;
         }
     }
+
     if (((*ch) & 0b10000000) == 0) { //Символ занимает 1 байт
-        if (sort_by_en_chars && ((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z')) || sort_by_digits && (*ch >= '0' && *ch <= '9')) {
+        if (sort_by_en_chars && ((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z')) 
+         || sort_by_digits && (*ch >= '0' && *ch <= '9')) {
             return *ch;
         }
+
         else {
             return -1;
         }
     }
+
     if (((*ch) & 0b11100000) == 0b11000000) { //Символ занимает 2 байт
         if (!sort_by_ru_chars) return -2;
         int fullcode = (((int)*ch) << 8) + (int)*(ch + 1);
@@ -389,23 +405,30 @@ int GetCharCode(unsigned char* ch, int dir) {
         if (fullcode >= 0xD090 && fullcode <= 0xD095) { //А...Е
             return fullcode;
         }
+
         if (fullcode == 0xD001) { //Ё
             return 0xD096;
         }
+
         if (fullcode >= 0xD096 && fullcode <= 0xD0B5) { //Ж...е
             return fullcode + 1;
         }
+
         if (fullcode == 0xD191) { //ё
             return 0xD0B7;
         }
+
         if (fullcode >= 0xD0B6 && fullcode <= 0xD0BF || fullcode >= 0xD180 && fullcode <= 0xD18F) { //ж...я
             return fullcode + 2;
         }
+
         return -2;
     }
+
     if (((*ch) & 0b11110000) == 0b11100000) { //Символ занимает 3 байт
         return -3;
     }
+
     return -4; // Символ занимает 4 байт
 
 }
@@ -442,12 +465,12 @@ int dct_strcmp(struct line str1, struct line str2, int dir) {
             i2 -= code2 * dir;
         }
 
-
         if (code1 != code2) {
             if (code1 == 0) return  1;
             if (code2 == 0) return -1;
             return code1 - code2;
         }
+
         if (code1 == '\0') {
             return 0;
         }
@@ -531,7 +554,7 @@ void Merging(int diap1, int diap2, int enddiap1, int enddiap2, struct line* from
 */
 int MergeSort(struct line* array, int size, int dir) {
 
-    line* array2 = (line*)calloc(size, sizeof(array2[0]));
+    line* array2 = (line*) calloc(size, sizeof(array2[0]));
     //for (int i = 0; i < size; i++) { *(array2 + i) = NULL; }
 
     int diap1 = 0, diap2 = 0, enddiap1 = 0, enddiap2 = 0;
@@ -549,12 +572,14 @@ int MergeSort(struct line* array, int size, int dir) {
 
             if (oddity) {
                 Merging(diap1, diap2, enddiap1, enddiap2, array, array2, dir);
-            }
+            } 
+            
             else {
                 Merging(diap1, diap2, enddiap1, enddiap2, array2, array, dir);
             }
         }
     }
+
     if (!oddity) Merging(0, size, size, size, array2, array, dir);
     free(array2);
     return 0;
