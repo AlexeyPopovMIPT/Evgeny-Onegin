@@ -44,8 +44,7 @@ struct line {
 
     \warning coding of the input must be UTF-8
 
-    Program sorts strings by English and Russian letters and digits (each category is valid if its value in enum
-    \c validchars is set to 1), so that:
+    Program sorts strings by English and Russian letters (by default), so that:
     \arg Any digit is "less" than any English letter, and any English letter is "less" than any Russian letter;
     \arg In both languages any uppercase letter is "less" than any lowercase letter;
     \arg In both languages letters of both case is ordered same as in the alphabet.
@@ -171,7 +170,7 @@ int main(int argcount, char *argsarray[])
         int      param = 0;
         int     nologo = 0;
 
-        //TODO: NOT CHANGE VALUES OF argc AND args
+        //TODO: NOT CHANGE VALUES OF argcount AND argsarray (сделано) 
         int argc = argcount;
         char** args = argsarray;
         if (argc < 3) {
