@@ -1,24 +1,24 @@
-//Time.cpp в этом же репозитории
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys\stat.h>
 #include <assert.h>
 #include <time.h>
+#include "Stopwatch.h"
 
 
-char* INPUT  = (char*)"input.txt";
-char* OUTPUT = (char*)"output.txt";
+const char* INPUT  = "input.txt";
+const char* OUTPUT = "output.txt";
 //TODO: in command prompt (сделано)
 
+const char* LOGO = "Sorting strings from file\nAuthor: AlexeyPopovMIPT, 2020\nVersion 1.0.0.1\n\n";
 
 int sort_by_ru_chars = 1;
 int sort_by_en_chars = 1;
 int   sort_by_digits = 0;
 
 enum Stopwatch_args {
-    START = 0,
-    END = 1
+    SW_START = 0,
+      SW_END = 1
 };
 
 /*!
@@ -34,13 +34,16 @@ struct line {
 };
 
 /*!
-    Evgeny Onegin, or The enchanting strings sorting
+    Evgeny Onegin, or The enchanting strings sorting.
+    The Phylologic Drama by
     \author AlexeyPopovMIPT
     \version 1.0.0.1
 
     Program for sorting the strings from the .txt file, whose full path is located by the INPUT address.
     As a result, application writes sorted strings, then sorted by the end strings, then original text
     to the file, whose full path is located by the OUTPUT address. These parts are separated by 50 "stars" each one on a new line.
+
+    \note    No one Pushkins were damaged.
 
     \warning coding of the input must be UTF-8
 
@@ -94,10 +97,10 @@ int dct_strcmp(struct line str1, struct line str2, int dir);
     \b if \c *ch is English letter or digit and EN_LRS is 1, \c a is ASCII code of \c *ch.
 
     \b else \b if \c *ch is Russian letter and RU_LRS is 1, \c a is:
-        \arg UTF-8 code of \c *ch if \c *ch is between А and Е
-        \arg UTF-8 code of Е +1 if \c *ch is Ё
+        \arg UTF-8 code of \c *ch    if \c *ch is between А and Е
+        \arg UTF-8 code of     Е  +1 if \c *ch is Ё
         \arg UTF-8 code of \c *ch +1 if \c *ch is between Ж and Я or between а and е
-        \arg UTF-8 code of е +2 if \c *ch is ё
+        \arg UTF-8 code of     е  +2 if \c *ch is ё
         \arg UTF-8 code of \c *ch +2 if \c *ch is between ж and я
 
     \b else \c a is minus size of character in UTF-8 in bytes
@@ -153,7 +156,7 @@ void fPrintStrings(FILE* out, unsigned char* array);
 
 /*!
     Opens file by \c filename path in \mode mode, in case of failure prints error message
-    \returns
+    \returns 0 if successful, fopen_s otherwise
 */
 int OpenFile(const char* filename, const char* mode, FILE** stream);
 
@@ -161,7 +164,6 @@ int GetFileSize(const char* filename);
 
 int main(int argcount, char *argsarray[])
 {
-    extern double Stopwatch(int par);
     int measure_time = 0;
 
     //Processing arguments
@@ -170,16 +172,17 @@ int main(int argcount, char *argsarray[])
         int      param = 0;
         int     nologo = 0;
 
-        //TODO: NOT CHANGE VALUES OF argcount AND argsarray (сделано) 
+        //TODO: NOT CHANGE VALUES OF argc AND args (сделано)
         int argc = argcount;
-        char** args = argsarray;
+        const char** args = (const char**) argsarray;
         if (argc < 3) {
-            printf("Pass second input file path, then output file path");
-            return 0;
+            printf("%s%s",LOGO,"Pass input file path as 2nd argument, then output file path");
+            return 0; 
         }
-        INPUT = args[1];
+        INPUT  = args[1];
         OUTPUT = args[2];
-        argc -= 2; args += 2;
+        argc -= 2; 
+        args += 2;
 
         while (--argc > 0 && (*++args)[0] == '-') {
             while (param = *++args[0]) {
@@ -189,7 +192,7 @@ int main(int argcount, char *argsarray[])
                     break;
 
                 case 'm':
-                    if (prev_param == 'r') sort_by_ru_chars = 0;
+                    if      (prev_param == 'r') sort_by_ru_chars = 0;
                     else if (prev_param == 'e') sort_by_en_chars = 0;
                     break;
 
@@ -207,11 +210,11 @@ int main(int argcount, char *argsarray[])
             }
         }
         if (!nologo)
-            printf("Sorting strings from file\nAuthor: AlexeyPopovMIPT, 2020\nVersion 1.0.0.1\n\n");
+            printf(LOGO);
     }
 
     if (measure_time) {
-        Stopwatch(START);
+        Stopwatch(SW_START);
     }
 
     FILE* Source = NULL;
@@ -250,13 +253,13 @@ int main(int argcount, char *argsarray[])
     free(data);
 
 
-    if (measure_time) printf("%f", Stopwatch(END));
+    if (measure_time) printf("%f", Stopwatch(SW_END));
     return 0;
 }
 
 int OpenFile(const char* filename, const char* mode, FILE** stream) {
 
-    int errcode;
+    int errcode = 0;
     if ((errcode = fopen_s(stream, filename, mode)) != 0) {
         printf("Unexpected error while opening %s\n", filename);
         return errcode;
@@ -294,8 +297,8 @@ void fPrintStrings(FILE* out, unsigned char* array) {
     assert(out != NULL);
     assert(array != NULL);
 
-    if (*(array + 1) != 255) fprintf(out, "%s\n", array);
-    for (int i = 0; *(array + i + 1) != 255; i++) {
+    if (*(array + 1) != (unsigned char)EOF) fprintf(out, "%s\n", array);
+    for (int i = 0; *(array + i + 1) != (unsigned char)EOF; i++) {
         if (*(array + i - 1) == '\0') {
             fprintf(out, "%s\n", array + i);
         }
@@ -309,8 +312,8 @@ void GetNewStringsPointers(unsigned char* data, struct line* pointers) {
 
     (*pointers).start = data;
     pointers++;
-    int i;
-    for (i = 0; *(data + i + 1) != 255; i++) {
+    int i = 0;
+    for (; *(data + i + 1) != (unsigned char)EOF; i++) {
         if (*(data + i) == '\0') {
             (*pointers).start = data + i + 1;
             (*(pointers - 1)).end = data + i - 1;
@@ -334,7 +337,7 @@ int GetDataAndCountStrings(FILE* Source, unsigned char* data, int FileSize) {
     fread(data, sizeof(unsigned char), FileSize, Source);
 
     int counter = 0;
-    //reader, realloc
+
     unsigned char* writer = data;
     unsigned char current_wrote = '\0';
 
@@ -364,7 +367,7 @@ int GetDataAndCountStrings(FILE* Source, unsigned char* data, int FileSize) {
     }
     *(writer++) = EOF;
     realloc(data, writer - data);
-    //TODO: reallocate data
+    //TODO: reallocate data (сделано)
 
     return counter;
 
@@ -388,7 +391,7 @@ int GetCharCode(unsigned char* ch, int dir) {
 
     if (((*ch) & 0b10000000) == 0) { //Символ занимает 1 байт
         if (sort_by_en_chars && ((*ch >= 'A' && *ch <= 'Z') || (*ch >= 'a' && *ch <= 'z')) 
-         || sort_by_digits && (*ch >= '0' && *ch <= '9')) {
+         || sort_by_digits   &&  (*ch >= '0' && *ch <= '9')) {
             return *ch;
         }
 
